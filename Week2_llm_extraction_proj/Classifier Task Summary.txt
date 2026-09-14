@@ -1,0 +1,32 @@
+TO RUN ON VS CODE WITH VENV ENVIROMENT:-
+1. Make sure Python 3.10+ is installed
+2. Open the folder in VS Code
+3. Open the vs terminal and run these commands:
+
+   python -m venv venv
+   venv\Scripts\activate
+   pip install groq
+   python classifier.py
+
+4. Results will appear in the terminal
+
+-------------------------------------------
+-------------------------------------------
+
+TO RUN ON JUPYTER WITH ANACONDA ENVIROMENT - 
+
+1. Make sure Anaconda is installed
+2. Open Command Prompt and run:
+
+   jupyter notebook
+
+3. Navigate to the llm_extraction folder
+4. Click on classifier_task.ipynb
+5. Run each cell with Shift+Enter
+6. Results appear below each cell
+
+-------------------------------------------
+-------------------------------------------
+
+Classifier Task Summary:
+This python script was developed using Visual Studio Code with a Python virtual environment (venv) for local development, and also tested on Jupyter Notebook via Anaconda locally.This script uses the LLaMA 3.3-70B model via the Groq API to classify English text into one of five categories: Sports, Politics, Technology, Health, and Entertainment. The model receives a sentence and returns a single category label based on the dominant theme of the text. All 5 sample texts were classified correctly with no errors. The model also depends on an internet connection to function since it runs on Groq's servers.A limitation is that unclear texts that belong to multiple categories may be misclassified since the model must pick only one label.

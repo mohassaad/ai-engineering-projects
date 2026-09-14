@@ -1,0 +1,9 @@
+.env 
+*.keras 
+chest_xray/ 
+PetImages/ 
+*.jpg 
+*.png 
+*.jpeg 
+venv/ 
+__pycache__/ 
