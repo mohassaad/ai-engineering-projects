@@ -1,28 +1,21 @@
 # ============================================================
 # SAFE DATA ADDER for the chest X-ray dataset
 #
-# What it does, in ONE run:
-#   1) Scans your existing chest_xray/train + chest_xray/test and
-#      fingerprints (hashes) every image.
-#   2) Scans a staging folder of NEW images you downloaded.
-#   3) DROPS any new image that is:
-#        - a duplicate of something already in chest_xray/ (leakage), or
-#        - a duplicate of another new image (within the staging set).
-#   4) Splits the surviving new images 80/20 into train/ and test/,
-#      PER SOURCE and PER CLASS, so no source lands entirely on one side.
+# In one run it:
+#   1) Hashes every image in chest_xray/train + chest_xray/test.
+#   2) Hashes every image in the new_data/ staging folder.
+#   3) Drops new images that duplicate existing ones (leakage) or
+#      duplicate each other.
+#   4) Splits the survivors 80/20 into train/test, per class.
 #
-# SAFETY:
-#   * DRY RUN by default (APPLY = False): it only PRINTS a report and
-#     copies NOTHING. Read the report first.
-#   * Set APPLY = True only when you're happy, then run again to copy.
-#   * It COPIES (never moves/deletes), so your downloads stay intact.
-#   * It also checks your EXISTING data for train/test duplicates and
-#     warns you (a pre-existing leak you'd want to know about).
+# Safety:
+#   * Dry run by default (APPLY = False) — prints a report, copies nothing.
+#   * Set APPLY = True to actually copy.
+#   * Copies only, never moves or deletes.
+#   * Also warns about pre-existing train/test duplicates.
 #
-# NOTE on dedup: hashing catches identical / re-saved-identical images.
-# It will NOT catch the same photo resized or re-compressed differently.
-# So it's a strong safeguard, not a perfect one — but it removes the
-# most common and most damaging form of leakage.
+# Note: hashing catches identical / re-saved-identical images, not the
+# same photo resized or re-compressed. Strong safeguard, not perfect.
 # ============================================================
 
 import os
@@ -38,30 +31,29 @@ import io
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Your real dataset (already has train/ and test/ with the 4 class folders)
+# real dataset (already has train/ and test/ with the 4 class folders)
 CHEST_DIR = os.path.join(BASE_DIR, "chest_xray")
 
-# The staging folder with NEW images to add. Inside it, put ONE subfolder
-# per class you want to add to, using the SAME class names as chest_xray:
+# staging folder with NEW images. Inside it, put one subfolder per class,
+# using the same class names as chest_xray:
 #
 #   new_data/
-#     COVID19/        <- new covid images (any .png/.jpg)
-#     NORMAL/         <- new normal images
-#     PNEUMONIA/      <- new pneumonia images
-#     TURBERCULOSIS/  <- new TB images
+#     COVID19/
+#     NORMAL/
+#     PNEUMONIA/
+#     TURBERCULOSIS/
 #
-# You only need the classes you're actually adding to; missing ones are skipped.
+# Only the classes you're adding need to exist; missing ones are skipped.
 NEW_DIR = os.path.join(BASE_DIR, "new_data")
 
-# Must match your real folder names EXACTLY (note the TURBERCULOSIS spelling)
+# must match the real folder names exactly (note the TURBERCULOSIS spelling)
 CLASSES = ["COVID19", "NORMAL", "PNEUMONIA", "TURBERCULOSIS"]
 
 TRAIN_RATIO = 0.8          # 80% train / 20% test
 SEED = 42                  # deterministic split
 VALID_EXT = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
 
-# >>> THE SAFETY SWITCH <<<
-# False = dry run (report only, copies nothing).  True = actually copy.
+# False = dry run (report only). True = actually copy.
 APPLY = False
 
 
@@ -73,8 +65,8 @@ def is_image(fn):
     return fn.lower().endswith(VALID_EXT)
 
 def image_hash(path):
-    """Hash the DECODED pixel data (not the file bytes), so the same image
-    saved under a different filename or container still hashes the same.
+    """Hash the DECODED pixels (not the file bytes), so the same image
+    saved under a different name or container still hashes the same.
     Returns None if the file can't be read as an image."""
     try:
         with Image.open(path) as im:
@@ -104,8 +96,8 @@ print("=" * 60)
 print("STEP 1: Fingerprinting your existing chest_xray/ ...")
 
 existing_hashes = {}          # hash -> "split/CLASS" where it lives
-existing_by_split = defaultdict(set)  # (split) -> set of hashes
-pre_existing_leak = []        # images that are in BOTH train and test already
+existing_by_split = defaultdict(set)  # (split, cls) -> set of hashes
+pre_existing_leak = []        # images already in BOTH train and test
 
 for split in ["train", "test"]:
     for cls in CLASSES:
@@ -231,7 +223,7 @@ def copy_into(split, cls, items):
     os.makedirs(dest, exist_ok=True)
     copied = 0
     for src, h in items:
-        # unique destination name to avoid overwriting anything
+        # unique destination name so nothing gets overwritten
         base = f"added_{h[:10]}_{os.path.basename(src)}"
         base = base.replace(" ", "_")
         dst = os.path.join(dest, base)
