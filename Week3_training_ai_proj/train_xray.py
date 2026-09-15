@@ -2,34 +2,34 @@
 # CHEST X-RAY CLASSIFIER (4 classes) — LEAKAGE-RESISTANT
 #   COVID19 / NORMAL / PNEUMONIA / TURBERCULOSIS
 #
-# THE REAL PROBLEM this version fixes:
+# Problem this version fixes:
 #   Earlier the model was cheating — it learned "which dataset a
 #   picture came from" (scanner/contrast/crop style) instead of the
 #   actual lung disease. That's why a TB scan got called Normal and a
 #   Normal scan got called COVID: the *style* didn't match what it had
-#   memorised for that label. This is called SOURCE / DATASET LEAKAGE.
+#   memorised for that label. This is SOURCE / DATASET LEAKAGE.
 #
-# WHAT THIS VERSION DOES ABOUT IT:
+# What this version does about it:
 #   1) GRAYSCALE input. X-rays are grayscale; different datasets have
-#      subtle colour/tint casts that the model was using as a shortcut.
-#      Converting to grayscale (then back to 3 channels for MobileNetV2)
-#      removes that cue and FORCES the model onto real lung structure.
+#      subtle colour/tint casts the model was using as a shortcut.
+#      Grayscale (then back to 3 channels for MobileNetV2) removes
+#      that cue and FORCES the model onto real lung structure.
 #   2) NO STRETCHING. Images used to be squashed into a 128x128 square,
 #      so a wide pneumonia scan (one dataset) looked different from a
-#      square 512x512 TB scan (another dataset) — the SHAPE became a
+#      square 512x512 TB scan (another dataset) — SHAPE became a
 #      shortcut. Now dark borders are trimmed and the centre square is
-#      cut out instead. multimodal_ui.py runs the exact same
-#      prepare_xray() on uploads, so the app sees what training saw.
-#   3) MILD (sqrt) class weighting, so it doesn't over-predict rare
+#      cut out instead. multimodal_ui.py runs the same prepare_xray()
+#      on uploads, so the app sees what training saw.
+#   3) Mild (sqrt) class weighting, so it doesn't over-predict rare
 #      classes.
 #   4) Honest evaluation on the big test/ folder + confusion matrix
 #      + per-class accuracy. Run remove_duplicates.py first so no test
 #      image is also sitting in train/.
 #
-# NOTE: the biggest remaining fix is DATA, not code — you must mix
-#   image sources for every class (especially add ADULT NORMAL images:
-#   every current NORMAL image is a child's X-ray), split into train AND
-#   test in the same ratio (add_data.py does this).
+# Note: the biggest remaining fix is DATA, not code — mix image sources
+#   for every class (especially add ADULT NORMAL images: every current
+#   NORMAL image is a child's X-ray), split into train AND test in the
+#   same ratio (add_data.py does this).
 #
 # EDUCATIONAL DEMO ONLY — not a medical diagnostic tool.
 # ============================================================
@@ -61,7 +61,7 @@ MODEL_PATH       = os.path.join(BASE_DIR, "cat_dog_model.keras")
 CLASS_NAMES_PATH = os.path.join(BASE_DIR, "class_names.txt")
 APP_DIR          = os.path.join(BASE_DIR, "..", "Week4_multimodal_agent_proj")  # gets a copy of the model
 
-IMG_SIZE        = (128, 128)   # keep 128 — matches the app; simple and stable
+IMG_SIZE        = (128, 128)   # keep 128 — matches the app
 BATCH_SIZE      = 16
 SEED            = 42
 VAL_SPLIT       = 0.2
@@ -71,7 +71,7 @@ FINETUNE_LAYERS = 40
 
 # dark-border trimming — must match multimodal_ui.py
 BORDER_LEVEL    = 20.0   # pixels darker than this (0-255) count as border
-BORDER_FRACTION = 0.05   # a row/column with fewer than 5% brighter pixels is border
+BORDER_FRACTION = 0.05   # a row/col with under 5% bright pixels is border
 
 print(" Chest X-Ray Classification — leakage-resistant (grayscale, no stretching)")
 print(f"Dataset: {DATASET_PATH}")
@@ -117,10 +117,9 @@ print(f" Cleaned ({len(broken)} removed).")
 # STEP 3: LOAD DATA (val split from train; test = honest report)
 # ============================================================
 
-# ---- ONE preprocessing function, shared with the app ----
-# multimodal_ui.py has an IDENTICAL copy of prepare_xray(). If the app
-# prepares images even slightly differently from training, predictions
-# silently get worse — so change both or neither.
+# One preprocessing function, shared with the app. multimodal_ui.py has an
+# identical copy — if the app prepares images differently, predictions
+# silently get worse. Change both or neither.
 def prepare_xray(rgb):
     """RGB image (h, w, 3) -> grayscale -> dark borders trimmed -> centre square
     (no stretching) -> IMG_SIZE, as 3 identical channels in [0, 255]."""
@@ -137,9 +136,8 @@ def prepare_xray(rgb):
                       lambda: gray[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1],
                       lambda: gray)
 
-    # cut out the centre square instead of stretching, then shrink.
-    # (not padding: black bars would appear on the wide child X-rays only,
-    #  and the model would learn "bars = Normal/Pneumonia" — a new shortcut)
+    # centre square instead of stretching — padding would let the model
+    # learn "bars = Normal/Pneumonia" as a shortcut
     side = tf.minimum(tf.shape(trimmed)[0], tf.shape(trimmed)[1])
     square = tf.image.resize_with_crop_or_pad(trimmed, side, side)
     small = tf.image.resize(square, IMG_SIZE, antialias=True)
@@ -151,7 +149,7 @@ class_names = sorted(d for d in os.listdir(TRAIN_DIR) if os.path.isdir(os.path.j
 NUM_CLASSES = len(class_names)
 print(f" Classes: {class_names}")
 
-IMAGE_EXTS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")   # formats TensorFlow can decode
+IMAGE_EXTS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")   # formats TF can decode
 
 def list_images(split_dir):
     paths, labels = [], []
@@ -172,7 +170,7 @@ AUTOTUNE = tf.data.AUTOTUNE
 
 def make_dataset(paths, labels, shuffle=False):
     ds = tf.data.Dataset.from_tensor_slices((paths, labels))
-    # cache(): the slow decode/trim/pad work only happens in the first epoch
+    # cache(): the slow decode/trim/pad work only runs in the first epoch
     ds = ds.map(load_image, num_parallel_calls=AUTOTUNE).cache()
     if shuffle:
         ds = ds.shuffle(1000, seed=SEED)
@@ -274,8 +272,8 @@ with open(CLASS_NAMES_PATH, "w") as f:
     f.write("\n".join(class_names))
 print("\n Saved -> 'cat_dog_model.keras'  |  order -> 'class_names.txt'")
 
-# The app loads ITS OWN copy of the model, so copy the new one over —
-# otherwise the app keeps using an old model after you retrain.
+# The app loads its own copy — copy the new model over, otherwise it keeps
+# using an old one after you retrain.
 if os.path.isdir(APP_DIR):
     try:
         shutil.copy2(MODEL_PATH, APP_DIR)
