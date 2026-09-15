@@ -1,25 +1,25 @@
 # ============================================================
 # DUPLICATE REMOVER for the chest X-ray dataset
 #
-# THE PROBLEM it fixes:
+# Problem it fixes:
 #   The same X-ray can sit in the dataset twice under different names
 #   (e.g. Tuberculosis-342.png in train/ AND rahman_Tuberculosis-342.png
 #   in test/). Then the "test" score partly measures memory, not skill.
-#   add_data.py can't catch these: it compares exact pixels, and a copy
-#   that was re-saved as JPEG no longer matches exactly.
+#   add_data.py can't catch these — it compares exact pixels, and a copy
+#   re-saved as JPEG no longer matches exactly.
 #
 # What it does, per class:
-#   1) Makes a tiny 64x64 fingerprint of every image in train/ AND test/
+#   1) Makes a 64x64 fingerprint of every image in train/ AND test/
 #      (brightness/contrast normalised, so a re-saved copy still matches).
 #   2) Groups images whose fingerprints are near-identical.
-#   3) Keeps ONE image per group and moves the others to removed_duplicates/.
-#      If a group has a copy in test/, the TEST copy is kept and the train
+#   3) Keeps ONE per group and moves the rest to removed_duplicates/.
+#      If a group has a copy in test/, the TEST copy is kept and train
 #      copies go — so the model is never tested on a picture it trained on.
 #
-# SAFETY:
-#   * DRY RUN by default: prints a report, moves nothing.
-#   * Run   python remove_duplicates.py --apply   to actually move files.
-#   * Files are MOVED (never deleted) and listed in
+# Safety:
+#   * Dry run by default — prints a report, moves nothing.
+#   * Run  python remove_duplicates.py --apply  to actually move files.
+#   * Files are MOVED (never deleted) and logged in
 #     removed_duplicates/removed_log.txt, so it's fully reversible.
 # ============================================================
 
